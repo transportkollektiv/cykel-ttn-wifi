@@ -20,8 +20,8 @@ host = os.getenv('HOST', '')
 moz_geolocation_key = os.getenv('MOZLOC_KEY', 'test')
 
 
-voltgauge = Gauge('bike_battery_volts', 'bike battery voltage', ['bike_number'])
-timegauge = Gauge('bike_last_data_update', 'bike last data timestamp', ['bike_number'])
+voltgauge = Gauge('tracker_battery_volts', 'bike battery voltage', ['device_id'])
+timegauge = Gauge('tracker_last_data_update', 'bike last data timestamp', ['device_id'])
 packgauge = Gauge('ttn_last_package_received', 'last ttn package received timestamp')
 
 headers = {}
@@ -34,11 +34,9 @@ def uplink_callback(msg, client):
 	try:
 		print("Received uplink from ", msg.dev_id)
 		print(msg)
-		bike_number = msg.dev_id.replace("lora-wifi-bike-ulm-", "")
 		data = msg.payload_fields.data
 		#js = json.dumps(data)
 		print(data)
-		bike_number = int(bike_number)
 		mr = requests.post('%s?key=%s' % (MOZ_GEOLOCATION_URL, moz_geolocation_key), data=data)
 		if mr.status_code != 200:
 			# mr.json().error.message
@@ -48,14 +46,14 @@ def uplink_callback(msg, client):
 		data = mr.json()
 		print(data)
 		update = {
-			'bike_number': bike_number,
+			'device_id': msg.dev_id,
 			'lat': data['location']['lat'],
 			'lng': data['location']['lng'],
 		}
 		resp = requests.post(endpoint, headers=headers, data=update)
 		print(resp)
-		voltgauge.labels(bike_number=bike_number).set(data.vbat)
-		timegauge.labels(bike_number=bike_number).set(int(time.time()))
+		#voltgauge.labels(device_id=msg.dev_id).set(data.vbat)
+		timegauge.labels(device_id=msg.dev_id).set(int(time.time()))
 		packgauge.set(int(time.time()))
 	except e:
 		print(e)
@@ -79,7 +77,7 @@ atexit.register(close_mqtt)
 mqtt_client.set_connect_callback(connect_callback)
 mqtt_client.set_uplink_callback(uplink_callback)
 
-print('starting cykel-ttn')
+print('starting cykel-ttn-wifi')
 mqtt_client.connect()
 start_http_server(port, addr=host)
 print('serving metrics on %s:%s' % (host, port))
