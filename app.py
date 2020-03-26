@@ -49,6 +49,7 @@ def uplink_callback(msg, client):
 			'device_id': msg.dev_id,
 			'lat': data['location']['lat'],
 			'lng': data['location']['lng'],
+			'accuracy': data['accuracy']
 		}
 		resp = requests.post(endpoint, headers=headers, data=update)
 		print(resp)
