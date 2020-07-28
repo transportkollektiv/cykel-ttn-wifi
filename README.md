@@ -26,6 +26,7 @@ export TTN_ACCESS_KEY="<your ttn application access key>"
 export ENDPOINT="https://<your cykel host>/api/bike/updatelocation"
 export ENDPOINT_AUTH_HEADER="Api-Key <your api key for cykel>"
 export PORT=8081
+export MOZLOC_KEY="<your MLS-API Key from https://location.services.mozilla.com/api>"
 ```
 
 You can create the *ttn application access key* on the ttn console, the only needed capability is `messages`.
