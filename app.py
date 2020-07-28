@@ -56,9 +56,8 @@ def uplink_callback(msg, client):
 
 		resp = requests.post(endpoint, headers=headers, data=update)
 		print(resp)
-		#voltgauge.labels(device_id=msg.dev_id).set(data.vbat)
 		if hasattr(msg.payload_fields, 'voltage'):
-			voltgauge.labels(**lbl).set(msg.payload_fields.voltage)
+			voltgauge.labels(device_id=msg.dev_id).set(msg.payload_fields.voltage)
 		timegauge.labels(device_id=msg.dev_id).set(int(time.time()))
 		packgauge.set(int(time.time()))
 	except e:
