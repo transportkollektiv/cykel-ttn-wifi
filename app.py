@@ -25,7 +25,7 @@ timegauge = Gauge('tracker_last_data_update', 'bike last data timestamp', ['devi
 packgauge = Gauge('ttn_last_package_received', 'last ttn package received timestamp')
 
 headers = {}
-if auth_header is not '':
+if auth_header != '':
 	headers = {
 		'Authorization': auth_header
 	}
@@ -51,9 +51,14 @@ def uplink_callback(msg, client):
 			'lng': data['location']['lng'],
 			'accuracy': data['accuracy']
 		}
+		if hasattr(msg.payload_fields, 'voltage'):
+			update['battery_voltage'] = msg.payload_fields.voltage
+
 		resp = requests.post(endpoint, headers=headers, data=update)
 		print(resp)
 		#voltgauge.labels(device_id=msg.dev_id).set(data.vbat)
+		if hasattr(msg.payload_fields, 'voltage'):
+			voltgauge.labels(**lbl).set(msg.payload_fields.voltage)
 		timegauge.labels(device_id=msg.dev_id).set(int(time.time()))
 		packgauge.set(int(time.time()))
 	except e:
