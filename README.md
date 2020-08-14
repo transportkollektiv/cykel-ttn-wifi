@@ -11,7 +11,7 @@ This adapter is for trackers using wifi for location calculations. for GPS based
 Install the required packages using `pip install -r requirements.txt`. It is recommended to use a virtualenv with your choice of tool, e.g. `pipenv`, in which case you can run `pipenv install` (and `pipenv shell` or prefix `pipenv run` to run commands).
 
 ## Decoder
-To use the cykel-ttn-wifi adapter you need to bring the incoming bytes from your lora device into a readable format. The TTN Console supports decoders/converters and validators for this use case. Look into the `ttn-decoder` directory to find javascript, which you can use as decoder function.
+To use the cykel-ttn-wifi adapter you need to bring the incoming bytes from your lora device into a readable format. The TTN Console supports decoders/converters and validators for this use case. You can find the [decoder script in the Tracker Repo](https://github.com/stadtulm/Lora-Wifi-Location-Tracker/blob/master/ttn-decoder-script.js).
 
 Visit `https://console.thethingsnetwork.org/applications/<application-id>/payload-formats` to set the *Payload Format* to *Custom* and enter the decoder function there.
 
