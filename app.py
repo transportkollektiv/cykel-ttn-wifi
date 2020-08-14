@@ -35,22 +35,22 @@ def uplink_callback(msg, client):
 		print("Received uplink from ", msg.dev_id)
 		print(msg)
 		data = msg.payload_fields.data
-		#js = json.dumps(data)
 		print(data)
 		mr = requests.post('%s?key=%s' % (MOZ_GEOLOCATION_URL, moz_geolocation_key), data=data)
-		if mr.status_code != 200:
-			# mr.json().error.message
-			print(mr)
-			print(mr.json())
-			return
-		data = mr.json()
-		print(data)
+		
 		update = {
-			'device_id': msg.dev_id,
-			'lat': data['location']['lat'],
-			'lng': data['location']['lng'],
-			'accuracy': data['accuracy']
+			'device_id': msg.dev_id
 		}
+		if mr.status_code == 200:
+			locationdata = mr.json()
+			update = {
+				'device_id': msg.dev_id,
+				'lat': locationdata['location']['lat'],
+				'lng': locationdata['location']['lng'],
+				'accuracy': locationdata['accuracy']
+			}
+			print(locationdata)
+		
 		if hasattr(msg.payload_fields, 'voltage'):
 			update['battery_voltage'] = msg.payload_fields.voltage
 
