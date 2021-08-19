@@ -4,14 +4,16 @@ import os
 import sys
 import time
 
+import paho.mqtt.client as mqtt
 import requests
-import ttn
 from prometheus_client import Gauge, start_http_server
 
 MOZ_GEOLOCATION_URL = "https://location.services.mozilla.com/v1/geolocate"
 
-app_id = os.environ["TTN_APP_ID"]
-access_key = os.environ["TTN_ACCESS_KEY"]
+ttn_host = os.environ["TTN_HOST"]
+ttn_username = os.environ["TTN_USERNAME"]
+ttn_api_key = os.environ["TTN_API_KEY"]
+
 endpoint = os.environ["ENDPOINT"]
 auth_header = os.getenv("ENDPOINT_AUTH_HEADER", "")
 port = int(os.getenv("PORT", 8080))
@@ -29,70 +31,80 @@ if auth_header != "":
     headers = {"Authorization": auth_header}
 
 
-def uplink_callback(msg, client):
+def uplink_callback(msg):
     try:
-        print("Received uplink from ", msg.dev_id)
+        dev_id = msg["end_device_ids"]["device_id"]
+        print("Received uplink from %s" % (dev_id))
         print(msg)
-        data = msg.payload_fields.data
+        data = msg["uplink_message"]["decoded_payload"]
         print(data)
         mr = requests.post(
             "%s?key=%s" % (MOZ_GEOLOCATION_URL, moz_geolocation_key), data=data
         )
 
-        update = {"device_id": msg.dev_id}
+        update = {"device_id": dev_id}
         if mr.status_code == 200:
             locationdata = mr.json()
             update = {
-                "device_id": msg.dev_id,
+                "device_id": dev_id,
                 "lat": locationdata["location"]["lat"],
                 "lng": locationdata["location"]["lng"],
                 "accuracy": locationdata["accuracy"],
             }
             print(locationdata)
 
-        if hasattr(msg.payload_fields, "voltage"):
-            update["battery_voltage"] = msg.payload_fields.voltage
+        if "voltage" in data:
+            update["battery_voltage"] = data["voltage"]
 
         resp = requests.post(endpoint, headers=headers, data=update)
         print(resp)
-        if hasattr(msg.payload_fields, "voltage"):
-            voltgauge.labels(device_id=msg.dev_id).set(msg.payload_fields.voltage)
-        timegauge.labels(device_id=msg.dev_id).set(int(time.time()))
+        if "voltage" in data:
+            voltgauge.labels(device_id=dev_id).set(data["voltage"])
+        timegauge.labels(device_id=dev_id).set(int(time.time()))
         packgauge.set(int(time.time()))
-    except e:
+    except Exception as e:
         print(e)
 
 
-def connect_callback(res, client):
-    if not res:
+def on_connect(client, userdata, flags, rc):
+    if rc > 0:
         print("connection to ttn mqtt failed")
         client.close()
         sys.exit(1)
-    else:
-        print("connected to ttn")
+
+    print("connected to ttn")
+    client.subscribe(f"v3/{ttn_username}/devices/+/up")
 
 
-handler = ttn.HandlerClient(app_id, access_key)
-mqtt_client = handler.data()
+def on_message(client, userdata, msg):
+    data = json.loads(msg.payload.decode("utf-8"))
+    uplink_callback(data)
+
+
+client = mqtt.Client()
+client.on_connect = on_connect
+client.on_message = on_message
+
+client.username_pw_set(ttn_username, ttn_api_key)
+# client.tls_set(ca_certs=None, cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS, ciphers=None)
+
+ttn_hostname, ttn_port = ttn_host.split(":")
 
 
 def close_mqtt():
-    mqtt_client.close()
+    # client.loop_stop()
+    client.disconnect()
 
 
 atexit.register(close_mqtt)
 
-mqtt_client.set_connect_callback(connect_callback)
-mqtt_client.set_uplink_callback(uplink_callback)
-
 print("starting cykel-ttn-wifi")
-mqtt_client.connect()
+client.connect(ttn_hostname, port=int(ttn_port), keepalive=60)
 start_http_server(port, addr=host)
 print("serving metrics on %s:%s" % (host, port))
 
 try:
-    while 1:
-        time.sleep(1)
+    client.loop_forever()
 except KeyboardInterrupt:
     print("exiting")
     sys.exit(0)
