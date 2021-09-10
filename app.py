@@ -39,7 +39,7 @@ def uplink_callback(msg):
         data = msg["uplink_message"]["decoded_payload"]
         print(data)
         mr = requests.post(
-            "%s?key=%s" % (MOZ_GEOLOCATION_URL, moz_geolocation_key), data=data
+            "%s?key=%s" % (MOZ_GEOLOCATION_URL, moz_geolocation_key), data=data["data"]
         )
 
         update = {"device_id": dev_id}
